@@ -2,6 +2,23 @@ require 'multi_json'
 require 'oauth'
 require 'omniauth'
 
+class Hash
+  def desymbolize_keys
+    hash = {}
+    keys.each do |key|
+      case (v = delete(key))
+      when Hash
+        v = v.desymbolize_keys
+      when Array
+        v = v.map{|x| (x.desymbolize_keys rescue x) }
+      end
+      hash[(key.to_s rescue key) || key] = v
+    end
+    hash
+  end
+end
+
+
 module OmniAuth
   module Strategies
     class OAuth
@@ -44,7 +61,7 @@ module OmniAuth
 
       def callback_phase
         raise OmniAuth::NoSessionError.new("Session Expired") if session['oauth'].nil?
-
+        session['oauth'] = session['oauth'].desymbolize_keys
         request_token = ::OAuth::RequestToken.new(consumer, session['oauth'][name.to_s].delete('request_token'), session['oauth'][name.to_s].delete('request_secret'))
 
         opts = {}
